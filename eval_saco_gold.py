@@ -233,7 +233,6 @@ def gpu_worker(
             # Load and process image
             if not os.path.exists(img_path):
                 result_queue.put((subset_name, {"error": f"Image not found: {img_path}"}))
-                work_queue.task_done()
                 continue
 
             image = Image.open(img_path).convert("RGB")
@@ -258,7 +257,7 @@ def gpu_worker(
 
                     prediction = {
                         "image_id": img_info["coco_img_id"],
-                        "category_id": query["original_cat_id"],
+                        "category_id": 1,  # SA-CO/Gold uses category_id=1 for all annotations
                         "segmentation": convert_rle_to_coco_format(rle),
                         "bbox": bbox,
                         "score": float(scores[i]),
@@ -346,8 +345,11 @@ def process_with_multi_gpu(
         # Load subset data
         gt_files = subset_info["gt_files"]
         img_dir = metaclip_img_dir if subset_info["image_source"] == "metaclip" else sa1b_img_dir
-        gt_file = gt_dir / gt_files[0]
 
+        # Load datapoints from the FIRST GT file only (merged_a)
+        # The three GT files contain the same images with annotations from 3 different annotators
+        # We run inference once per image, then evaluate against all 3 annotation sets
+        gt_file = gt_dir / gt_files[0]
         if not gt_file.exists():
             print(f"Warning: GT file not found: {gt_file}")
             continue

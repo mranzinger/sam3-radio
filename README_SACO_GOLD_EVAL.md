@@ -34,7 +34,7 @@ The script expects the SA-CO/Gold data to be organized as follows:
 
 ## Usage Examples
 
-### 1. Evaluate with RADIO encoder
+### 1. Evaluate with RADIO encoder (single GPU)
 
 ```bash
 python eval_saco_gold.py \
@@ -42,6 +42,18 @@ python eval_saco_gold.py \
     --data-root /lustre/fsw/portfolios/llmservice/projects/llmservice_fm_vision/datasets/segmentation/sa-co/gold \
     --output-dir ./saco_gold_radio_predictions \
     --confidence-threshold 0.3
+```
+
+### 1b. Evaluate with RADIO encoder (multi-GPU)
+
+```bash
+python eval_saco_gold.py \
+    --radio-model-version radio_v2.5-h \
+    --data-root /lustre/fsw/portfolios/llmservice/projects/llmservice_fm_vision/datasets/segmentation/sa-co/gold \
+    --output-dir ./saco_gold_radio_predictions \
+    --confidence-threshold 0.3 \
+    --multi-gpu \
+    --batch-size 16
 ```
 
 ### 2. Evaluate with original SAM3 encoder
@@ -96,7 +108,7 @@ python eval_saco_gold.py \
 
 ### Optional Arguments
 
-- `--gt-dir`: Directory containing ground truth annotations (default: data-root)
+- `--gt-dir`: Directory containing ground truth annotations (default: data-root/gt-annotations)
 - `--metaclip-img-dir`: Directory containing MetaCLIP images (default: data-root/metaclip_images)
 - `--sa1b-img-dir`: Directory containing SA-1B images (default: data-root/sa1b_images)
 - `--output-dir`: Directory to save predictions and results (default: ./saco_gold_predictions)
@@ -106,6 +118,8 @@ python eval_saco_gold.py \
 - `--vitdet`: Run RADIO in ViTDet mode with specified window size
 - `--subset`: Evaluate only a specific subset (choices: metaclip_nps, sa1b_nps, crowded, fg_food, fg_sports_equipment, attributes, wiki_common)
 - `--skip-inference`: Skip inference and only run evaluation (assumes predictions already exist)
+- `--batch-size`: Batch size for inference (default: 1). Use larger values (e.g., 8, 16, 32) for faster processing on each GPU
+- `--multi-gpu`: Distribute subsets across all available GPUs for parallel processing (automatically detects GPU count)
 
 ## SA-CO/Gold Subsets
 
@@ -153,10 +167,37 @@ Higher values are better for all metrics.
 
 ## Performance Tips
 
-1. Use `--confidence-threshold 0.3` for best results (lower threshold captures more instances)
-2. For faster evaluation during development, test on a single subset first using `--subset`
-3. The script automatically uses TF32 and bfloat16 on compatible GPUs for faster inference
-4. If you have limited RAM, predictions are saved per-subset so you can process them one at a time
+1. **Use multi-GPU for faster inference**: The `--multi-gpu` flag distributes subsets across all available GPUs, processing them in parallel. Each GPU runs a separate process with its own model instance.
+2. **Batch processing**: Use `--batch-size 4` or higher to process multiple images in parallel on each GPU
+3. Use `--confidence-threshold 0.3` for best results (lower threshold captures more instances)
+4. For faster evaluation during development, test on a single subset first using `--subset`
+5. The script automatically uses TF32 and bfloat16 on compatible GPUs for faster inference
+6. If you have limited RAM, predictions are saved per-subset so you can process them one at a time
+
+### Multi-GPU Processing
+
+The `--multi-gpu` flag distributes the 7 subsets across available GPUs in round-robin fashion:
+
+```bash
+# Example with 4 GPUs:
+# GPU 0: metaclip_nps, fg_food
+# GPU 1: sa1b_nps, fg_sports_equipment
+# GPU 2: crowded, attributes
+# GPU 3: wiki_common
+```
+
+Each GPU processes its assigned subsets independently with its own model instance. With 4 GPUs, you can expect roughly **3-4x speedup** compared to single GPU inference. The actual speedup depends on:
+- GPU model and memory
+- Batch size per GPU
+- Subset sizes (some subsets have more images than others)
+- Batch size (larger is better, but limited by GPU memory)
+- Image size and model complexity
+- Number of GPUs
+
+**Recommended configurations:**
+- **Single GPU**: `--batch-size 4` (or higher if memory allows)
+- **Multi-GPU (auto-detect)**: `--multi-gpu --batch-size 16` (uses all available GPUs)
+- **Adjust batch size based on memory**: Start with 16, increase to 32 if you have headroom
 
 ## Comparison with demo_sam3_radio.py
 
