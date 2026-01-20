@@ -208,14 +208,14 @@ def plot_benchmark_results(results: List[Dict], output_path: str):
 
         # Add text labels at each data point
         for ws, mean in zip(window_sizes, means):
-            ax.text(ws, mean, f'{mean:.1f}', fontsize=9, ha='center', va='bottom',
+            ax.text(ws, mean, f'{mean:.1f}', fontsize=13, ha='center', va='bottom',
                    bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=color, alpha=0.8))
 
     # Customize plot
-    ax.set_xlabel('VitDet Window Size', fontsize=12, fontweight='bold')
-    ax.set_ylabel('Inference Time (ms)', fontsize=12, fontweight='bold')
-    ax.set_title('Vision Encoder Benchmark: SAM3 vs RADIO', fontsize=14, fontweight='bold')
-    ax.legend(loc='best', fontsize=11, framealpha=0.9)
+    ax.set_xlabel('VitDet Window Size', fontsize=13, fontweight='bold')
+    ax.set_ylabel('Inference Time (ms)', fontsize=13, fontweight='bold')
+    ax.set_title('Vision Encoder Benchmark: SAM3 vs RADIO', fontsize=15, fontweight='bold')
+    ax.legend(loc='best', fontsize=13, framealpha=0.9)
     ax.grid(True, alpha=0.3, which='both')
 
     # Set log scale for both axes
@@ -338,7 +338,7 @@ def main():
         "--plot-output",
         type=str,
         default=None,
-        help="Output file for plot (default: same directory as JSON with _plot.png suffix)"
+        help="Output file for plot (default: same directory as JSON with _plot.pdf suffix)"
     )
     parser.add_argument(
         "--sam3-checkpoint",
@@ -554,7 +554,7 @@ def main():
     plot_output = args.plot_output
     if plot_output is None:
         output_path_obj = Path(args.output)
-        plot_output = str(output_path_obj.parent / f"{output_path_obj.stem}_plot.png")
+        plot_output = str(output_path_obj.parent / f"{output_path_obj.stem}_plot.pdf")
 
     plot_benchmark_results(all_results, plot_output)
 
